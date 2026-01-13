@@ -36,12 +36,12 @@ const AddExpense = () => {
     }));
   };
 
-  const handleParticipantChange = (friendId, isChecked) => {
+  const handleParticipantChange = (friendName, isChecked) => {
     setFormData(prev => ({
       ...prev,
       participants: isChecked
-        ? [...prev.participants, friendId]
-        : prev.participants.filter(id => id !== friendId)
+        ? [...prev.participants, friendName]
+        : prev.participants.filter(name => name !== friendName)
     }));
   };
 
@@ -82,7 +82,12 @@ const AddExpense = () => {
 
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to add expense');
+      console.error('Add expense error:', err);
+      if (err.response?.data?.success === false) {
+        setError(err.response.data.error);
+      } else {
+        setError(err.response?.data?.message || err.message || 'Failed to add expense');
+      }
     } finally {
       setLoading(false);
     }
@@ -145,7 +150,7 @@ const AddExpense = () => {
           >
             <option value="">Select payer</option>
             {friends.map(friend => (
-              <option key={friend._id} value={friend._id}>
+              <option key={friend._id} value={friend.name}>
                 {friend.name}
               </option>
             ))}
@@ -164,8 +169,8 @@ const AddExpense = () => {
                 <label key={friend._id} className="participant-item">
                   <input
                     type="checkbox"
-                    checked={formData.participants.includes(friend._id)}
-                    onChange={(e) => handleParticipantChange(friend._id, e.target.checked)}
+                    checked={formData.participants.includes(friend.name)}
+                    onChange={(e) => handleParticipantChange(friend.name, e.target.checked)}
                   />
                   <span>{friend.name}</span>
                 </label>

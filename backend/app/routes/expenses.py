@@ -6,9 +6,12 @@ expenses_bp = Blueprint('expenses', __name__)
 
 @expenses_bp.route('/expenses', methods=['POST'])
 def create_expense():
+    current_app.logger.info('Creating new expense')
     data = request.get_json()
+    current_app.logger.info(f'Expense data received: {data}')
+    
     if not data:
-        return jsonify({'error': 'Request body is required'}), 400
+        return jsonify({'success': False, 'error': 'Request body is required'}), 400
     
     description = data.get('description', '').strip()
     amount = data.get('amount')
@@ -17,16 +20,16 @@ def create_expense():
     
     # Validation
     if not description:
-        return jsonify({'error': 'Description is required'}), 400
+        return jsonify({'success': False, 'error': 'Description is required'}), 400
     
     if len(description) > 200:
-        return jsonify({'error': 'Description too long (max 200 characters)'}), 400
+        return jsonify({'success': False, 'error': 'Description too long (max 200 characters)'}), 400
     
     if not payer:
-        return jsonify({'error': 'Payer is required'}), 400
+        return jsonify({'success': False, 'error': 'Payer is required'}), 400
     
     if not participants or len(participants) == 0:
-        return jsonify({'error': 'At least one participant is required'}), 400
+        return jsonify({'success': False, 'error': 'At least one participant is required'}), 400
     
     try:
         if not current_app.db:
@@ -42,16 +45,23 @@ def create_expense():
         )
         
         return jsonify({
-            '_id': str(expense_id),
-            'description': description,
-            'message': 'Expense created successfully'
+            'success': True,
+            'message': 'Expense created successfully',
+            'data': {
+                '_id': str(expense_id),
+                'description': description,
+                'amount': validated_amount,
+                'payer': payer,
+                'participants': validated_participants
+            }
         }), 201
         
     except ValueError as e:
-        return jsonify({'error': str(e)}), 400
+        current_app.logger.error(f'Validation error: {e}')
+        return jsonify({'success': False, 'error': str(e)}), 400
     except Exception as e:
         current_app.logger.error(f'Create expense error: {e}')
-        return jsonify({'error': 'Failed to create expense'}), 500
+        return jsonify({'success': False, 'error': 'Failed to create expense'}), 500
 
 @expenses_bp.route('/expenses', methods=['GET'])
 def get_expenses():

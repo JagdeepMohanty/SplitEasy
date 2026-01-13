@@ -47,7 +47,12 @@ const Friends = () => {
       setNewFriend({ name: '', email: '' });
       fetchFriends();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to add friend');
+      console.error('Add friend error:', err);
+      if (err.response?.data?.success === false) {
+        setError(err.response.data.error);
+      } else {
+        setError(err.response?.data?.message || err.message || 'Failed to add friend');
+      }
     } finally {
       setLoading(false);
     }

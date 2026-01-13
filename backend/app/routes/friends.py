@@ -5,21 +5,24 @@ friends_bp = Blueprint('friends', __name__)
 
 @friends_bp.route('/friends', methods=['POST'])
 def add_friend():
+    current_app.logger.info('Adding new friend')
     data = request.get_json()
+    current_app.logger.info(f'Friend data received: {data}')
+    
     if not data:
-        return jsonify({'error': 'Request body is required'}), 400
+        return jsonify({'success': False, 'error': 'Request body is required'}), 400
         
     name = data.get('name', '').strip()
     email = data.get('email', '').strip().lower()
     
     if not name or not email:
-        return jsonify({'error': 'Name and email are required'}), 400
+        return jsonify({'success': False, 'error': 'Name and email are required'}), 400
     
     if len(name) > 100:
-        return jsonify({'error': 'Name too long (max 100 characters)'}), 400
+        return jsonify({'success': False, 'error': 'Name too long (max 100 characters)'}), 400
     
     if '@' not in email or len(email) > 254:
-        return jsonify({'error': 'Invalid email format'}), 400
+        return jsonify({'success': False, 'error': 'Invalid email format'}), 400
     
     try:
         if not current_app.db:
@@ -30,7 +33,7 @@ def add_friend():
         # Check if friend already exists
         existing_friend = friends_collection.find_one({'email': email})
         if existing_friend:
-            return jsonify({'error': 'Friend already exists'}), 400
+            return jsonify({'success': False, 'error': 'Friend already exists'}), 400
         
         # Add friend
         friend_data = {
@@ -42,15 +45,18 @@ def add_friend():
         result = friends_collection.insert_one(friend_data)
         
         return jsonify({
-            '_id': str(result.inserted_id),
-            'name': name,
-            'email': email,
-            'message': 'Friend added successfully'
+            'success': True,
+            'message': 'Friend added successfully',
+            'data': {
+                '_id': str(result.inserted_id),
+                'name': name,
+                'email': email
+            }
         }), 201
         
     except Exception as e:
         current_app.logger.error(f'Add friend error: {e}')
-        return jsonify({'error': 'Failed to add friend'}), 500
+        return jsonify({'success': False, 'error': 'Failed to add friend'}), 500
 
 @friends_bp.route('/friends', methods=['GET'])
 def get_friends():

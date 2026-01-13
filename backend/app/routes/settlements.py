@@ -6,9 +6,12 @@ settlements_bp = Blueprint('settlements', __name__)
 
 @settlements_bp.route('/settlements', methods=['POST'])
 def create_settlement():
+    current_app.logger.info('Creating new settlement')
     data = request.get_json()
+    current_app.logger.info(f'Settlement data received: {data}')
+    
     if not data:
-        return jsonify({'error': 'Request body is required'}), 400
+        return jsonify({'success': False, 'error': 'Request body is required'}), 400
         
     from_user = data.get('fromUser', '').strip()
     to_user = data.get('toUser', '').strip()
@@ -16,19 +19,19 @@ def create_settlement():
     
     # Validation
     if not from_user or not to_user:
-        return jsonify({'error': 'From user and to user are required'}), 400
+        return jsonify({'success': False, 'error': 'From user and to user are required'}), 400
     
     if from_user == to_user:
-        return jsonify({'error': 'Cannot settle with yourself'}), 400
+        return jsonify({'success': False, 'error': 'Cannot settle with yourself'}), 400
     
     try:
         amount = float(amount)
         if amount <= 0:
-            return jsonify({'error': 'Amount must be positive'}), 400
+            return jsonify({'success': False, 'error': 'Amount must be positive'}), 400
         if amount > 1000000:  # 10 lakh INR limit
-            return jsonify({'error': 'Amount too large'}), 400
+            return jsonify({'success': False, 'error': 'Amount too large'}), 400
     except (TypeError, ValueError):
-        return jsonify({'error': 'Invalid amount'}), 400
+        return jsonify({'success': False, 'error': 'Invalid amount'}), 400
     
     try:
         if not current_app.db:
@@ -47,16 +50,19 @@ def create_settlement():
         result = settlements_collection.insert_one(settlement_data)
         
         return jsonify({
-            '_id': str(result.inserted_id),
-            'fromUser': from_user,
-            'toUser': to_user,
-            'amount': round(amount, 2),
-            'message': 'Settlement created successfully'
+            'success': True,
+            'message': 'Settlement created successfully',
+            'data': {
+                '_id': str(result.inserted_id),
+                'fromUser': from_user,
+                'toUser': to_user,
+                'amount': round(amount, 2)
+            }
         }), 201
         
     except Exception as e:
         current_app.logger.error(f'Create settlement error: {e}')
-        return jsonify({'error': 'Failed to create settlement'}), 500
+        return jsonify({'success': False, 'error': 'Failed to create settlement'}), 500
 
 @settlements_bp.route('/settlements', methods=['GET'])
 def get_settlements():
