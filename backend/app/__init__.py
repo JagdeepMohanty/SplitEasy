@@ -84,6 +84,35 @@ def create_app():
         app.logger.error(f'Failed to register blueprints: {e}')
         raise
     
+    # Root endpoint
+    @app.route('/', methods=['GET'])
+    def root():
+        """Root endpoint for backend status"""
+        app.logger.info('Root endpoint accessed')
+        return jsonify({
+            'status': 'ok',
+            'service': 'EasyXpense Backend',
+            'environment': os.getenv('FLASK_ENV', 'development')
+        }), 200
+    
+    # Health endpoint for monitoring
+    @app.route('/health', methods=['GET'])
+    def health():
+        """Simple health check for Render monitoring"""
+        app.logger.info('Health endpoint accessed')
+        try:
+            db_status = 'connected' if app.db else 'disconnected'
+            return jsonify({
+                'status': 'healthy',
+                'database': db_status
+            }), 200
+        except Exception as e:
+            app.logger.error(f'Health check failed: {e}')
+            return jsonify({
+                'status': 'unhealthy',
+                'error': str(e)
+            }), 503
+    
     # Enhanced error handlers
     @app.errorhandler(400)
     def bad_request(error):
@@ -92,7 +121,9 @@ def create_app():
     
     @app.errorhandler(404)
     def not_found(error):
-        app.logger.warning(f'Endpoint not found: {request.url}')
+        # Don't log warnings for expected endpoints
+        if request.path not in ['/', '/health']:
+            app.logger.warning(f'Endpoint not found: {request.url}')
         return jsonify({'error': 'Endpoint not found'}), 404
     
     @app.errorhandler(405)
