@@ -3,7 +3,7 @@ from bson import ObjectId
 
 debts_bp = Blueprint('debts', __name__)
 
-@debts_bp.route('', methods=['GET'])
+@debts_bp.route('/debts', methods=['GET'])
 def get_debts():
     try:
         if not current_app.db:
@@ -18,46 +18,53 @@ def get_debts():
         expenses = list(expenses_collection.find({}))
         settlements = list(settlements_collection.find({}))
         
-        debts = []
+        # Calculate debts between friends
+        debt_matrix = {}
         
+        # Initialize debt matrix
         for friend in friends:
-            friend_id = str(friend['_id'])
             friend_name = friend['name']
+            debt_matrix[friend_name] = {}
+            for other_friend in friends:
+                if friend_name != other_friend['name']:
+                    debt_matrix[friend_name][other_friend['name']] = 0.0
+        
+        # Process expenses
+        for expense in expenses:
+            payer = expense.get('payer')
+            participants = expense.get('participants', [])
+            amount = expense.get('amount', 0)
             
-            # Calculate net amount for this friend
-            net_amount = 0.0
+            if payer and participants and amount > 0:
+                share_amount = round(amount / len(participants), 2)
+                
+                for participant in participants:
+                    if participant != payer and participant in debt_matrix:
+                        if payer in debt_matrix[participant]:
+                            debt_matrix[participant][payer] += share_amount
+        
+        # Process settlements (subtract payments)
+        for settlement in settlements:
+            from_user = settlement.get('fromUser')
+            to_user = settlement.get('toUser')
+            amount = settlement.get('amount', 0)
             
-            # Calculate from expenses
-            for expense in expenses:
-                if 'participants' in expense and friend_id in expense.get('participants', []):
-                    participant_count = len(expense['participants'])
-                    if participant_count > 0:
-                        share_amount = expense['amount'] / participant_count
-                        
-                        # If friend paid, they are owed
-                        if expense.get('payer') == friend_name:
-                            net_amount -= share_amount
-                        else:
-                            # Someone else paid, friend owes their share
-                            net_amount += share_amount
-            
-            # Subtract settlements (payments made)
-            for settlement in settlements:
-                if settlement.get('fromUser') == friend_name:
-                    net_amount -= settlement.get('amount', 0)
-                elif settlement.get('toUser') == friend_name:
-                    net_amount += settlement.get('amount', 0)
-            
-            # Round to 2 decimal places
-            net_amount = round(net_amount, 2)
-            
-            # Only include if there's a debt
-            if abs(net_amount) > 0.01:
-                debts.append({
-                    'friendId': friend_id,
-                    'friendName': friend_name,
-                    'amount': net_amount
-                })
+            if from_user and to_user and amount > 0:
+                if from_user in debt_matrix and to_user in debt_matrix[from_user]:
+                    debt_matrix[from_user][to_user] -= amount
+                    if debt_matrix[from_user][to_user] < 0:
+                        debt_matrix[from_user][to_user] = 0
+        
+        # Convert to response format
+        debts = []
+        for debtor, creditors in debt_matrix.items():
+            for creditor, amount in creditors.items():
+                if amount > 0.01:  # Only include significant debts
+                    debts.append({
+                        'debtor': debtor,
+                        'creditor': creditor,
+                        'amount': round(amount, 2)
+                    })
         
         return jsonify(debts), 200
         

@@ -9,6 +9,7 @@ class Expense:
         try:
             self.collection.create_index("date")
             self.collection.create_index("payer")
+            self.collection.create_index("participants")
         except Exception:
             pass  # Indexes might already exist or DB not available
     
@@ -23,27 +24,54 @@ class Expense:
             if rounded_amount <= 0:
                 raise ValueError("Amount must be positive")
             
+            if rounded_amount > Decimal('1000000'):  # 10 lakh INR limit
+                raise ValueError("Amount too large (max ₹10,00,000)")
+            
             # Convert back to float for MongoDB storage
             return float(rounded_amount)
         except (ValueError, TypeError) as e:
             raise ValueError(f"Invalid amount: {amount}")
     
+    def _validate_participants(self, participants, payer):
+        """Validate participants list"""
+        if not participants or len(participants) == 0:
+            raise ValueError("At least one participant is required")
+        
+        if len(participants) > 50:  # Reasonable limit
+            raise ValueError("Too many participants (max 50)")
+        
+        # Ensure payer is in participants
+        if payer not in participants:
+            participants.append(payer)
+        
+        return list(set(participants))  # Remove duplicates
+    
     def create_expense(self, description, amount, payer, participants):
-        """Create a new expense with INR validation"""
+        """Create a new expense with comprehensive validation"""
         # Validate amount
         validated_amount = self._validate_amount(amount)
+        
+        # Validate participants
+        validated_participants = self._validate_participants(participants, payer)
         
         expense_data = {
             'description': description.strip(),
             'amount': validated_amount,
-            'payer': payer,
-            'participants': participants,
+            'payer': payer.strip(),
+            'participants': validated_participants,
             'date': datetime.utcnow(),
             'currency': 'INR'
         }
+        
         result = self.collection.insert_one(expense_data)
         return result.inserted_id
     
     def get_all_expenses(self):
-        """Get all expenses sorted by date"""
+        """Get all expenses sorted by date (newest first)"""
         return list(self.collection.find({}).sort('date', -1))
+    
+    def get_expenses_by_participant(self, participant_name):
+        """Get expenses where a specific person participated"""
+        return list(self.collection.find({
+            'participants': participant_name
+        }).sort('date', -1))

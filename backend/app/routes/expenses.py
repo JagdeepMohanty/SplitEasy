@@ -4,7 +4,7 @@ from bson import ObjectId
 
 expenses_bp = Blueprint('expenses', __name__)
 
-@expenses_bp.route('', methods=['POST'])
+@expenses_bp.route('/expenses', methods=['POST'])
 def create_expense():
     data = request.get_json()
     if not data:
@@ -53,7 +53,7 @@ def create_expense():
         current_app.logger.error(f'Create expense error: {e}')
         return jsonify({'error': 'Failed to create expense'}), 500
 
-@expenses_bp.route('', methods=['GET'])
+@expenses_bp.route('/expenses', methods=['GET'])
 def get_expenses():
     try:
         if not current_app.db:
@@ -65,10 +65,8 @@ def get_expenses():
         # Convert ObjectIds to strings
         for expense in expenses:
             expense['_id'] = str(expense['_id'])
-            if 'participants' in expense:
-                for participant in expense['participants']:
-                    if '_id' in participant:
-                        participant['_id'] = str(participant['_id'])
+            if 'date' in expense:
+                expense['date'] = expense['date'].isoformat()
         
         return jsonify(expenses), 200
         

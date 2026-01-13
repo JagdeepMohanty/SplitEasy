@@ -4,7 +4,7 @@ from datetime import datetime
 
 settlements_bp = Blueprint('settlements', __name__)
 
-@settlements_bp.route('', methods=['POST'])
+@settlements_bp.route('/settlements', methods=['POST'])
 def create_settlement():
     data = request.get_json()
     if not data:
@@ -25,6 +25,8 @@ def create_settlement():
         amount = float(amount)
         if amount <= 0:
             return jsonify({'error': 'Amount must be positive'}), 400
+        if amount > 1000000:  # 10 lakh INR limit
+            return jsonify({'error': 'Amount too large'}), 400
     except (TypeError, ValueError):
         return jsonify({'error': 'Invalid amount'}), 400
     
@@ -37,8 +39,9 @@ def create_settlement():
         settlement_data = {
             'fromUser': from_user,
             'toUser': to_user,
-            'amount': amount,
-            'date': datetime.utcnow()
+            'amount': round(amount, 2),
+            'date': datetime.utcnow(),
+            'currency': 'INR'
         }
         
         result = settlements_collection.insert_one(settlement_data)
@@ -47,7 +50,7 @@ def create_settlement():
             '_id': str(result.inserted_id),
             'fromUser': from_user,
             'toUser': to_user,
-            'amount': amount,
+            'amount': round(amount, 2),
             'message': 'Settlement created successfully'
         }), 201
         
@@ -55,7 +58,7 @@ def create_settlement():
         current_app.logger.error(f'Create settlement error: {e}')
         return jsonify({'error': 'Failed to create settlement'}), 500
 
-@settlements_bp.route('', methods=['GET'])
+@settlements_bp.route('/settlements', methods=['GET'])
 def get_settlements():
     try:
         if not current_app.db:
