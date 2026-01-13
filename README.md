@@ -1,37 +1,51 @@
 # EasyXpense - Expense Splitting Application
 
-A modern expense splitting application built with React frontend and Python Flask backend, designed for Indian Rupee (INR) transactions.
+A modern, no-authentication expense splitting application built with React.js frontend and Python Flask backend, designed for Indian Rupee (INR) transactions.
 
-## 🌐 Live Application
+## 🌟 Features
 
-- **Frontend**: https://easyxpense.netlify.app
-- **Backend**: Deployed on Render
+- **💰 Expense Splitting**: Easily split expenses among friends
+- **📊 Debt Tracking**: See who owes what and how much
+- **💳 Payment Reminders**: Track outstanding debts
+- **📱 Payment History**: Complete log of expenses and settlements
+- **🇮🇳 INR Currency**: Native Indian Rupee support with proper formatting
+- **🚫 No Authentication**: Direct access without login/registration
+- **📱 Responsive Design**: Works perfectly on mobile and desktop
 
 ## 🏗️ Project Structure
 
 ```
 /
-├── frontend/                # React.js application (Netlify)
-│   ├── src/
-│   │   ├── components/      # Reusable UI components
-│   │   ├── contexts/        # React contexts (Auth)
-│   │   ├── pages/           # Page components
-│   │   ├── services/        # API service layer
-│   │   └── utils/           # Utility functions
+├── frontend/                # React.js application
 │   ├── public/
+│   │   ├── _redirects      # Netlify SPA routing
+│   │   └── index.html
+│   ├── src/
+│   │   ├── components/     # Reusable components (Navbar, Footer)
+│   │   ├── pages/          # Page components
+│   │   │   ├── Home.jsx
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── AddExpense.jsx
+│   │   │   ├── Friends.jsx
+│   │   │   ├── DebtTracker.jsx
+│   │   │   └── PaymentHistory.jsx
+│   │   ├── services/       # API integration
+│   │   ├── utils/          # Currency & calculation utilities
+│   │   ├── styles/         # CSS styles
+│   │   ├── App.jsx
+│   │   └── index.js
 │   ├── package.json
-│   └── vite.config.js
+│   └── .env.example
 │
-├── backend/                 # Flask application (Render)
+├── backend/                 # Flask application
 │   ├── app/
-│   │   ├── routes/          # API route handlers
+│   │   ├── routes/          # API endpoints
 │   │   ├── models/          # Database models
 │   │   ├── middleware/      # Custom middleware
-│   │   ├── utils/           # Utility functions
-│   │   └── __init__.py      # Flask app factory
-│   ├── run.py               # Application entry point
-│   ├── requirements.txt     # Python dependencies
-│   └── .env.example         # Environment variables template
+│   │   └── __init__.py
+│   ├── run.py
+│   ├── requirements.txt
+│   └── .env.example
 │
 ├── .gitignore
 └── README.md
@@ -51,14 +65,12 @@ A modern expense splitting application built with React frontend and Python Flas
    cd backend
    ```
 
-2. **Create and activate virtual environment:**
+2. **Create virtual environment:**
    ```bash
-   # Windows
    python -m venv venv
+   # Windows
    venv\Scripts\activate
-   
    # macOS/Linux
-   python3 -m venv venv
    source venv/bin/activate
    ```
 
@@ -67,17 +79,17 @@ A modern expense splitting application built with React frontend and Python Flas
    pip install -r requirements.txt
    ```
 
-4. **Configure environment variables:**
+4. **Configure environment:**
    ```bash
    cp .env.example .env
    # Edit .env with your MongoDB URI and JWT secret
    ```
 
-5. **Start the backend server:**
+5. **Start backend:**
    ```bash
    python run.py
    ```
-   Backend will run on `http://localhost:5000`
+   Backend runs on `http://localhost:5000`
 
 ### Frontend Setup
 
@@ -94,149 +106,190 @@ A modern expense splitting application built with React frontend and Python Flas
 3. **Configure environment:**
    ```bash
    cp .env.example .env
-   # Edit .env with your backend URL
+   # Edit .env with backend URL if needed
    ```
 
-4. **Start development server:**
+4. **Start frontend:**
    ```bash
-   npm run dev
+   npm start
    ```
-   Frontend will run on `http://localhost:5173`
+   Frontend runs on `http://localhost:3000`
 
 ## 🔧 Environment Configuration
 
 ### Backend (.env)
 ```env
-# MongoDB Connection (Required)
-MONGO_URI=mongodb+srv://<DB_USER>:<DB_PASSWORD>@easyxpense.uafnhae.mongodb.net/easyxpense
-
-# JWT Secret (Required)
-JWT_SECRET=your-super-secure-jwt-secret-key
-
-# Flask Configuration
+MONGO_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/easyxpense
+JWT_SECRET=your-secure-secret-key
 FLASK_ENV=production
 PORT=5000
 ```
 
 ### Frontend (.env)
 ```env
-# API Base URL (Required)
-VITE_API_BASE_URL=https://your-render-backend-url.onrender.com
-
-# App Configuration
-VITE_APP_NAME=EasyXpense
-VITE_APP_VERSION=1.0.0
+REACT_APP_API_URL=http://localhost:5000
+REACT_APP_NAME=EasyXpense
+REACT_APP_VERSION=1.0.0
 ```
 
-## 🌟 Features
+## 📱 Application Pages
 
-- **🔐 Secure Authentication**: JWT-based user authentication with bcrypt password hashing
-- **👥 Friend Management**: Add and manage friends by email
-- **💰 Expense Tracking**: Create and track shared expenses in Indian Rupees (₹)
-- **📊 Debt Calculation**: Automatic debt calculation and tracking between friends
-- **💳 Settlement System**: Record payments to settle debts
-- **🇮🇳 INR Currency**: Native Indian Rupee support with proper formatting
-- **📱 Responsive Design**: Mobile-friendly interface
-- **🛡️ Input Validation**: Comprehensive validation on both frontend and backend
+### 🏠 **Home**
+- Welcome page with feature overview
+- How it works section
+- Quick access to main features
 
-## 🚀 Production Deployment
+### 📊 **Dashboard**
+- Expense summary and statistics
+- Recent expenses overview
+- Debt summary with friends
+- Quick action buttons
 
-### Backend (Render)
-1. Connect your GitHub repository to Render
-2. Set environment variables:
-   - `MONGO_URI`
-   - `JWT_SECRET`
-   - `FLASK_ENV=production`
-3. Deploy with: `gunicorn run:app`
+### 💰 **Add Expense**
+- Create new shared expenses
+- Select payer and participants
+- Automatic split calculation
+- INR amount validation
 
-### Frontend (Netlify)
-1. Connect your GitHub repository to Netlify
-2. Set build command: `npm run build`
-3. Set publish directory: `dist`
-4. Set environment variable: `VITE_API_BASE_URL`
+### 👥 **Friends**
+- Add new friends by name and email
+- View all friends list
+- Friend management
 
-## 📊 API Endpoints
+### 📈 **Debt Tracker**
+- Complete debt overview
+- See who owes what
+- Settle debts functionality
+- Net balance calculations
 
-### Authentication
-- `POST /api/users/register` - User registration
-- `POST /api/users/login` - User login
-- `GET /api/users/me` - Get current user profile
-
-### Friends Management
-- `GET /api/friends` - Get user's friends list
-- `POST /api/friends/add` - Add a friend by email
-
-### Expense Management
-- `GET /api/expenses` - Get user's expenses
-- `POST /api/expenses` - Create a new expense
-
-### Settlements
-- `GET /api/settlements` - Get user's settlements
-- `POST /api/settlements` - Create a new settlement
-
-### Debt Tracking
-- `GET /api/debts` - Get debt summary with all friends
-
-### System
-- `GET /api/health` - Health check endpoint
+### 📋 **Payment History**
+- All expenses history
+- Settlement records
+- Filterable by type
+- Date-wise organization
 
 ## 🛠️ Tech Stack
 
 ### Frontend
 - **React 18** - Modern React with hooks
-- **React Router** - Client-side routing
+- **React Router DOM** - Client-side routing
 - **Axios** - HTTP client for API calls
-- **Vite** - Fast build tool and dev server
-- **Netlify** - Hosting platform
+- **Create React App** - Standard React setup
 
 ### Backend
 - **Python Flask** - Lightweight web framework
-- **PyMongo** - MongoDB driver for Python
-- **JWT** - JSON Web Token authentication
+- **PyMongo** - MongoDB driver
+- **JWT** - Token authentication
 - **bcrypt** - Password hashing
-- **Gunicorn** - WSGI HTTP Server
-- **Render** - Hosting platform
 
 ### Database
 - **MongoDB Atlas** - Cloud-hosted MongoDB
 
-## 🔒 Security Features
+## 🌐 API Endpoints
 
-- JWT token-based authentication
-- Password hashing with bcrypt
-- Input validation and sanitization
-- CORS configuration for secure cross-origin requests
-- Environment variable protection
-- Graceful error handling
+### Expenses
+- `GET /api/expenses` - Get all expenses
+- `POST /api/expenses` - Create new expense
 
-## 📱 How to Use
+### Debts
+- `GET /api/debts` - Get debt summary
 
-1. **Register/Login**: Create a new account or login with existing credentials
-2. **Add Friends**: Add friends by their email addresses
-3. **Create Expenses**: Add shared expenses with selected participants
-4. **Track Debts**: View who owes what in the debt tracker
-5. **Settle Up**: Record payments to settle debts between friends
+### Settlements
+- `GET /api/settlements` - Get settlement history
+- `POST /api/settlements` - Create new settlement
+
+### Friends
+- `GET /api/friends` - Get all friends
+- `POST /api/friends` - Add new friend
+
+## 💰 Currency Features
+
+- **INR Formatting**: Proper Indian Rupee display with ₹ symbol
+- **Decimal Precision**: Accurate to paise (0.01 INR)
+- **Input Validation**: Prevents invalid amounts
+- **Split Calculations**: Automatic per-person amount calculation
+- **Indian Number Format**: Uses en-IN locale formatting
+
+## 🚀 Production Deployment
+
+### Frontend (Netlify)
+1. Connect GitHub repository to Netlify
+2. Set build command: `npm run build`
+3. Set publish directory: `build`
+4. Set environment variable: `REACT_APP_API_URL`
+
+### Backend (Render/Heroku)
+1. Connect GitHub repository
+2. Set environment variables
+3. Deploy with: `gunicorn run:app`
+
+## 📋 Backend API Requirements
+
+The frontend expects these API endpoints to be available:
+
+```javascript
+// Expenses API
+GET /api/expenses
+POST /api/expenses
+Body: { description, amount, payer, participants[] }
+
+// Debts API  
+GET /api/debts
+Response: [{ friendId, friendName, amount }]
+
+// Settlements API
+GET /api/settlements
+POST /api/settlements
+Body: { fromUserId, toUserId, amount }
+
+// Friends API
+GET /api/friends
+POST /api/friends
+Body: { name, email }
+```
+
+## 🔍 Key Features
+
+### No Authentication Required
+- Direct access to all features
+- No login/registration process
+- Simplified user experience
+
+### Responsive Design
+- Mobile-first approach
+- Touch-friendly interface
+- Adaptive layouts for all screen sizes
+
+### Professional UI
+- Clean, modern design
+- Consistent color scheme
+- Intuitive navigation
+- Loading states and error handling
+
+### INR-Focused
+- Native Indian Rupee support
+- Proper currency formatting
+- Paise-level precision
+- Indian number formatting
 
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
-1. **MongoDB Connection Error**
-   - Verify `MONGO_URI` in environment variables
-   - Check MongoDB Atlas IP whitelist
-   - Ensure database name is correct
+1. **API Connection Error**
+   - Verify `REACT_APP_API_URL` in frontend `.env`
+   - Ensure backend is running on correct port
+   - Check CORS configuration
 
-2. **CORS Errors**
-   - Verify frontend URL is whitelisted in backend
-   - Check if both services are running
+2. **Build Errors**
+   - Run `npm install` to ensure all dependencies
+   - Check for any missing environment variables
+   - Verify all imports are correct
 
-3. **Authentication Issues**
-   - Verify `JWT_SECRET` is set
-   - Check if token is being sent in request headers
-
-4. **Deployment Issues**
-   - Ensure all environment variables are set in hosting platforms
-   - Check build logs for errors
+3. **Deployment Issues**
+   - Ensure `_redirects` file exists for Netlify
+   - Set correct environment variables in hosting platform
+   - Check build logs for specific errors
 
 ## 📄 License
 
