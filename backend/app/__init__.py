@@ -44,26 +44,37 @@ def create_app():
         cors_origins.extend(['http://localhost:3000', 'http://localhost:5173'])
     
     app.logger.info(f'CORS origins: {cors_origins}')
-    CORS(app, origins=cors_origins, methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+    CORS(app, 
+         origins=cors_origins, 
+         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+         allow_headers=['Content-Type'],
+         supports_credentials=False)
     
     # MongoDB connection with enhanced error handling
     try:
         app.logger.info('Connecting to MongoDB...')
-        client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
+        app.logger.info(f'MongoDB URI prefix: {mongo_uri[:20]}...')
+        client = MongoClient(
+            mongo_uri, 
+            serverSelectionTimeoutMS=10000,
+            connectTimeoutMS=10000,
+            socketTimeoutMS=10000
+        )
         app.db = client.get_default_database()
         # Test connection
         app.db.command('ping')
-        app.logger.info('MongoDB connection successful')
+        app.logger.info(f'MongoDB connection successful. Database: {app.db.name}')
     except Exception as e:
         app.logger.error(f'MongoDB connection failed: {e}')
-        app.db = None
+        raise RuntimeError(f'Failed to connect to MongoDB: {e}')
     
-    # Global request validation
+    # Global request logging and validation
     @app.before_request
-    def validate_json():
-        if request.method in ['POST', 'PUT'] and request.content_type:
-            if 'application/json' not in request.content_type:
-                return jsonify({'error': 'Content-Type must be application/json'}), 400
+    def log_and_validate():
+        app.logger.info(f'{request.method} {request.path} from {request.origin}')
+        if request.method in ['POST', 'PUT']:
+            if request.content_type and 'application/json' not in request.content_type:
+                return jsonify({'success': False, 'error': 'Content-Type must be application/json'}), 400
     
     # Register blueprints
     try:
@@ -88,11 +99,29 @@ def create_app():
     @app.route('/', methods=['GET'])
     def root():
         """Root endpoint for backend status"""
-        app.logger.info('Root endpoint accessed')
         return jsonify({
             'status': 'ok',
             'service': 'EasyXpense Backend',
-            'environment': os.getenv('FLASK_ENV', 'development')
+            'environment': os.getenv('FLASK_ENV', 'development'),
+            'database': 'connected' if app.db else 'disconnected'
+        }), 200
+    
+    # Test endpoint for debugging
+    @app.route('/api/test', methods=['GET', 'POST'])
+    def test_endpoint():
+        """Test endpoint to verify API connectivity"""
+        if request.method == 'POST':
+            data = request.get_json()
+            app.logger.info(f'Test POST received: {data}')
+            return jsonify({
+                'success': True,
+                'message': 'POST request successful',
+                'received': data
+            }), 200
+        return jsonify({
+            'success': True,
+            'message': 'API is working',
+            'database': 'connected' if app.db else 'disconnected'
         }), 200
     
     # Health endpoint for monitoring

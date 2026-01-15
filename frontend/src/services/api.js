@@ -37,15 +37,33 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error('API Response Error:', {
+    const errorDetails = {
       status: error.response?.status,
       url: error.config?.url,
       message: error.message,
-      data: error.response?.data
-    });
+      data: error.response?.data,
+      fullError: error.response?.data?.error || error.response?.data?.message || error.message
+    };
+    console.error('API Response Error:', errorDetails);
+    
+    // Enhance error message for better debugging
+    if (error.response?.data?.error) {
+      error.message = error.response.data.error;
+    } else if (error.response?.data?.message) {
+      error.message = error.response.data.message;
+    } else if (!error.response) {
+      error.message = 'Network Error: Cannot reach server. Please check if backend is running.';
+    }
+    
     return Promise.reject(error);
   }
 );
+
+// Test API connectivity
+export const testAPI = {
+  ping: () => api.get('/api/test'),
+  testPost: (data) => api.post('/api/test', data),
+};
 
 // Expenses API
 export const expensesAPI = {

@@ -8,6 +8,7 @@ import AddExpense from './pages/AddExpense';
 import Friends from './pages/Friends';
 import DebtTracker from './pages/DebtTracker';
 import PaymentHistory from './pages/PaymentHistory';
+import TestConnection from './pages/TestConnection';
 import './styles/App.css';
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
             <Route path="/friends" element={<Friends />} />
             <Route path="/debts" element={<DebtTracker />} />
             <Route path="/history" element={<PaymentHistory />} />
+            <Route path="/test" element={<TestConnection />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
