@@ -50,7 +50,7 @@ def create_app():
          allow_headers=['Content-Type'],
          supports_credentials=False)
     
-    # MongoDB connection with enhanced error handling
+    # MongoDB connection with explicit database name
     try:
         app.logger.info('Connecting to MongoDB...')
         app.logger.info(f'MongoDB URI prefix: {mongo_uri[:20]}...')
@@ -60,12 +60,13 @@ def create_app():
             connectTimeoutMS=10000,
             socketTimeoutMS=10000
         )
-        app.db = client.get_default_database()
+        # Explicitly use EasyXpense database
+        app.db = client['EasyXpense']
         # Test connection
         app.db.command('ping')
-        app.logger.info(f'MongoDB connection successful. Database: {app.db.name}')
+        app.logger.info(f'✓ MongoDB connected successfully to database: {app.db.name}')
     except Exception as e:
-        app.logger.error(f'MongoDB connection failed: {e}')
+        app.logger.error(f'✗ MongoDB connection failed: {e}')
         raise RuntimeError(f'Failed to connect to MongoDB: {e}')
     
     # Global request logging and validation
