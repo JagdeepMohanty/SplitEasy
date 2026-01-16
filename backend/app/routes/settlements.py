@@ -34,7 +34,7 @@ def create_settlement():
         return jsonify({'success': False, 'error': 'Invalid amount'}), 400
     
     try:
-        if not current_app.db:
+        if current_app.db is None:
             return jsonify({'error': 'Database not available'}), 503
             
         settlements_collection = current_app.db.settlements
@@ -67,7 +67,7 @@ def create_settlement():
 @settlements_bp.route('/settlements', methods=['GET'])
 def get_settlements():
     try:
-        if not current_app.db:
+        if current_app.db is None:
             return jsonify({'error': 'Database not available'}), 503
             
         settlements_collection = current_app.db.settlements

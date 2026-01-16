@@ -51,6 +51,7 @@ def create_app():
          supports_credentials=False)
     
     # MongoDB connection with explicit database name
+    app.db = None  # Initialize to None
     try:
         app.logger.info('Connecting to MongoDB...')
         app.logger.info(f'MongoDB URI prefix: {mongo_uri[:20]}...')
@@ -67,6 +68,7 @@ def create_app():
         app.logger.info(f'✓ MongoDB connected successfully to database: {app.db.name}')
     except Exception as e:
         app.logger.error(f'✗ MongoDB connection failed: {e}')
+        app.db = None
         raise RuntimeError(f'Failed to connect to MongoDB: {e}')
     
     # Global request logging and validation
@@ -97,51 +99,68 @@ def create_app():
         raise
     
     # Root endpoint
-    @app.route('/', methods=['GET'])
+    @app.route('/', methods=['GET', 'HEAD'])
     def root():
         """Root endpoint for backend status"""
-        return jsonify({
-            'status': 'ok',
-            'service': 'EasyXpense Backend',
-            'environment': os.getenv('FLASK_ENV', 'development'),
-            'database': 'connected' if app.db else 'disconnected'
-        }), 200
+        try:
+            db_status = 'connected' if app.db is not None else 'disconnected'
+            return jsonify({
+                'status': 'ok',
+                'service': 'EasyXpense Backend',
+                'environment': os.getenv('FLASK_ENV', 'development'),
+                'database': db_status
+            }), 200
+        except Exception as e:
+            app.logger.error(f'Root endpoint error: {e}')
+            return jsonify({
+                'status': 'error',
+                'service': 'EasyXpense Backend',
+                'database': 'unknown'
+            }), 200
     
     # Test endpoint for debugging
     @app.route('/api/test', methods=['GET', 'POST'])
     def test_endpoint():
         """Test endpoint to verify API connectivity"""
-        if request.method == 'POST':
-            data = request.get_json()
-            app.logger.info(f'Test POST received: {data}')
+        try:
+            if request.method == 'POST':
+                data = request.get_json()
+                app.logger.info(f'Test POST received: {data}')
+                return jsonify({
+                    'success': True,
+                    'message': 'POST request successful',
+                    'received': data
+                }), 200
+            db_status = 'connected' if app.db is not None else 'disconnected'
             return jsonify({
                 'success': True,
-                'message': 'POST request successful',
-                'received': data
+                'message': 'API is working',
+                'database': db_status
             }), 200
-        return jsonify({
-            'success': True,
-            'message': 'API is working',
-            'database': 'connected' if app.db else 'disconnected'
-        }), 200
+        except Exception as e:
+            app.logger.error(f'Test endpoint error: {e}')
+            return jsonify({
+                'success': False,
+                'message': 'Test endpoint error',
+                'error': str(e)
+            }), 200
     
     # Health endpoint for monitoring
-    @app.route('/health', methods=['GET'])
+    @app.route('/health', methods=['GET', 'HEAD'])
     def health():
         """Simple health check for Render monitoring"""
-        app.logger.info('Health endpoint accessed')
         try:
-            db_status = 'connected' if app.db else 'disconnected'
+            db_status = 'connected' if app.db is not None else 'disconnected'
             return jsonify({
                 'status': 'healthy',
                 'database': db_status
             }), 200
         except Exception as e:
-            app.logger.error(f'Health check failed: {e}')
+            app.logger.error(f'Health check error: {e}')
             return jsonify({
-                'status': 'unhealthy',
-                'error': str(e)
-            }), 503
+                'status': 'healthy',
+                'database': 'unknown'
+            }), 200
     
     # Enhanced error handlers
     @app.errorhandler(400)

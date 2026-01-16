@@ -25,7 +25,7 @@ def add_friend():
         return jsonify({'success': False, 'error': 'Invalid email format'}), 400
     
     try:
-        if not current_app.db:
+        if current_app.db is None:
             current_app.logger.error('Database connection not available for friends')
             return jsonify({'success': False, 'error': 'Database not available'}), 503
             
@@ -65,7 +65,7 @@ def add_friend():
 @friends_bp.route('/friends', methods=['GET'])
 def get_friends():
     try:
-        if not current_app.db:
+        if current_app.db is None:
             return jsonify({'error': 'Database not available'}), 503
             
         friends_collection = current_app.db.friends

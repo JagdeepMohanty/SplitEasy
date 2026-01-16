@@ -6,7 +6,7 @@ debts_bp = Blueprint('debts', __name__)
 @debts_bp.route('/debts', methods=['GET'])
 def get_debts():
     try:
-        if not current_app.db:
+        if current_app.db is None:
             return jsonify({'error': 'Database not available'}), 503
             
         # Get all friends and expenses to calculate debts

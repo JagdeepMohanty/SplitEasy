@@ -32,7 +32,7 @@ def create_expense():
         return jsonify({'success': False, 'error': 'At least one participant is required'}), 400
     
     try:
-        if not current_app.db:
+        if current_app.db is None:
             current_app.logger.error('Database connection not available')
             return jsonify({'success': False, 'error': 'Database not available'}), 503
             
@@ -71,7 +71,7 @@ def create_expense():
 @expenses_bp.route('/expenses', methods=['GET'])
 def get_expenses():
     try:
-        if not current_app.db:
+        if current_app.db is None:
             return jsonify({'error': 'Database not available'}), 503
             
         expense_model = Expense(current_app.db)

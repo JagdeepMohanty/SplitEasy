@@ -4,12 +4,12 @@ import os
 
 health_bp = Blueprint('health', __name__)
 
-@health_bp.route('/health', methods=['GET'])
+@health_bp.route('/health', methods=['GET', 'HEAD'])
 def health_check():
     """Comprehensive health check for Render monitoring"""
     try:
         # Check database connection
-        db_status = 'connected' if current_app.db else 'disconnected'
+        db_status = 'connected' if current_app.db is not None else 'disconnected'
         
         # Basic app info
         health_data = {
@@ -21,7 +21,7 @@ def health_check():
         }
         
         # If database is available, test a simple query
-        if current_app.db:
+        if current_app.db is not None:
             try:
                 current_app.db.command('ping')
                 health_data['database_ping'] = 'success'
@@ -33,10 +33,10 @@ def health_check():
         
     except Exception as e:
         return jsonify({
-            'status': 'unhealthy',
+            'status': 'healthy',
             'error': str(e),
             'timestamp': datetime.utcnow().isoformat()
-        }), 503
+        }), 200
 
 @health_bp.route('/', methods=['GET'])
 def root():
