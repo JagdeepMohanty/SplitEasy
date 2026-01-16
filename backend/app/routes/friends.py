@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
+from app.utils.sanitize import sanitize_string, sanitize_email
 from bson import ObjectId
 
 friends_bp = Blueprint('friends', __name__)
@@ -7,22 +8,17 @@ friends_bp = Blueprint('friends', __name__)
 def add_friend():
     current_app.logger.info('Adding new friend')
     data = request.get_json()
-    current_app.logger.info(f'Friend data received: {data}')
     
     if not data:
         return jsonify({'success': False, 'error': 'Request body is required'}), 400
-        
-    name = data.get('name', '').strip()
-    email = data.get('email', '').strip().lower()
+    
+    # Sanitize inputs
+    name = sanitize_string(data.get('name', ''), max_length=100)
+    email = sanitize_email(data.get('email', ''))
+    group_id = sanitize_string(data.get('group_id', ''), max_length=50) if data.get('group_id') else None
     
     if not name or not email:
-        return jsonify({'success': False, 'error': 'Name and email are required'}), 400
-    
-    if len(name) > 100:
-        return jsonify({'success': False, 'error': 'Name too long (max 100 characters)'}), 400
-    
-    if '@' not in email or len(email) > 254:
-        return jsonify({'success': False, 'error': 'Invalid email format'}), 400
+        return jsonify({'success': False, 'error': 'Valid name and email are required'}), 400
     
     try:
         if current_app.db is None:
@@ -30,10 +26,13 @@ def add_friend():
             return jsonify({'success': False, 'error': 'Database not available'}), 503
             
         friends_collection = current_app.db.friends
-        current_app.logger.info('Checking for existing friend')
         
-        # Check if friend already exists
-        existing_friend = friends_collection.find_one({'email': email})
+        # Check if friend already exists in this group
+        query = {'email': email}
+        if group_id:
+            query['group_id'] = group_id
+        
+        existing_friend = friends_collection.find_one(query)
         if existing_friend:
             return jsonify({'success': False, 'error': 'Friend already exists'}), 400
         
@@ -44,7 +43,9 @@ def add_friend():
             'created_at': ObjectId().generation_time
         }
         
-        current_app.logger.info(f'Inserting friend data: {friend_data}')
+        if group_id:
+            friend_data['group_id'] = group_id
+        
         result = friends_collection.insert_one(friend_data)
         current_app.logger.info(f'Friend inserted with ID: {result.inserted_id}')
         
@@ -64,12 +65,15 @@ def add_friend():
 
 @friends_bp.route('/friends', methods=['GET'])
 def get_friends():
+    group_id = sanitize_string(request.args.get('group_id', ''), max_length=50) if request.args.get('group_id') else None
+    
     try:
         if current_app.db is None:
             return jsonify({'error': 'Database not available'}), 503
             
         friends_collection = current_app.db.friends
-        friends = list(friends_collection.find({}).sort('name', 1))
+        query = {'group_id': group_id} if group_id else {}
+        friends = list(friends_collection.find(query).sort('name', 1))
         
         # Convert ObjectIds to strings
         for friend in friends:

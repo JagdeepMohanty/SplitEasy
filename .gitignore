@@ -4,6 +4,19 @@
 .env.production
 .env.development
 *.env
+!.env.example
+
+# Frontend environment
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+frontend/.env.development
+
+# Backend environment
+backend/.env
+backend/.env.local
+backend/.env.production
+backend/.env.development
 
 # Dependencies
 node_modules/

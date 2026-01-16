@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from bson import ObjectId
 from datetime import datetime
+from app.utils.money import rupees_to_paisa, paisa_to_rupees, validate_amount_paisa
 
 settlements_bp = Blueprint('settlements', __name__)
 
@@ -16,6 +17,7 @@ def create_settlement():
     from_user = data.get('fromUser', '').strip()
     to_user = data.get('toUser', '').strip()
     amount = data.get('amount')
+    group_id = data.get('group_id')  # Optional group_id
     
     # Validation
     if not from_user or not to_user:
@@ -25,13 +27,11 @@ def create_settlement():
         return jsonify({'success': False, 'error': 'Cannot settle with yourself'}), 400
     
     try:
-        amount = float(amount)
-        if amount <= 0:
-            return jsonify({'success': False, 'error': 'Amount must be positive'}), 400
-        if amount > 1000000:  # 10 lakh INR limit
-            return jsonify({'success': False, 'error': 'Amount too large'}), 400
-    except (TypeError, ValueError):
-        return jsonify({'success': False, 'error': 'Invalid amount'}), 400
+        # Convert and validate amount
+        amount_paisa = rupees_to_paisa(amount)
+        validate_amount_paisa(amount_paisa)
+    except (TypeError, ValueError) as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
     
     try:
         if current_app.db is None:
@@ -42,10 +42,15 @@ def create_settlement():
         settlement_data = {
             'fromUser': from_user,
             'toUser': to_user,
-            'amount': round(amount, 2),
+            'amount_paisa': amount_paisa,  # Store as integer paisa
+            'amount': paisa_to_rupees(amount_paisa),  # Also store rupees for backward compatibility
             'date': datetime.utcnow(),
             'currency': 'INR'
         }
+        
+        # Add group_id if provided
+        if group_id:
+            settlement_data['group_id'] = group_id
         
         result = settlements_collection.insert_one(settlement_data)
         
@@ -56,7 +61,7 @@ def create_settlement():
                 '_id': str(result.inserted_id),
                 'fromUser': from_user,
                 'toUser': to_user,
-                'amount': round(amount, 2)
+                'amount': paisa_to_rupees(amount_paisa)
             }
         }), 201
         
@@ -66,12 +71,15 @@ def create_settlement():
 
 @settlements_bp.route('/settlements', methods=['GET'])
 def get_settlements():
+    group_id = request.args.get('group_id')  # Optional filter
+    
     try:
         if current_app.db is None:
             return jsonify({'error': 'Database not available'}), 503
             
         settlements_collection = current_app.db.settlements
-        settlements = list(settlements_collection.find({}).sort('date', -1))
+        query = {'group_id': group_id} if group_id else {}
+        settlements = list(settlements_collection.find(query).sort('date', -1))
         
         # Convert ObjectIds to strings and format dates
         for settlement in settlements:

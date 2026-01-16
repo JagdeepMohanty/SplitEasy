@@ -16,15 +16,17 @@ const PaymentHistory = () => {
   const fetchHistory = async () => {
     try {
       setLoading(true);
+      setError('');
+      
       const [expensesRes, settlementsRes] = await Promise.all([
         expensesAPI.getAll(),
         settlementsAPI.getHistory()
       ]);
       
-      setExpenses(expensesRes.data);
-      setSettlements(settlementsRes.data);
+      setExpenses(Array.isArray(expensesRes.data) ? expensesRes.data : []);
+      setSettlements(Array.isArray(settlementsRes.data) ? settlementsRes.data : []);
     } catch (err) {
-      setError('Failed to load history');
+      setError(err.message || 'Failed to load history');
       console.error('History error:', err);
     } finally {
       setLoading(false);
@@ -117,8 +119,8 @@ const PaymentHistory = () => {
                     <div className="item-icon">💳</div>
                     <div className="item-details">
                       <h3>Settlement</h3>
-                      <p>From: {settlement.fromUser?.name || 'Unknown'}</p>
-                      <p>To: {settlement.toUser?.name || 'Unknown'}</p>
+                      <p>From: {settlement.fromUser || 'Unknown'}</p>
+                      <p>To: {settlement.toUser || 'Unknown'}</p>
                       <small>{formatDate(settlement.date)}</small>
                     </div>
                     <div className="item-amount settlement-amount">

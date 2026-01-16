@@ -17,9 +17,7 @@ def create_app():
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s %(levelname)s: %(message)s',
-            handlers=[
-                logging.StreamHandler(sys.stdout)
-            ]
+            handlers=[logging.StreamHandler(sys.stdout)]
         )
     else:
         logging.basicConfig(
@@ -38,7 +36,7 @@ def create_app():
     
     app.logger.info(f'Flask environment: {os.getenv("FLASK_ENV", "development")}')
     
-    # CORS configuration for production
+    # Strict CORS configuration
     cors_origins = ['https://easyxpense.netlify.app']
     if os.getenv('FLASK_ENV') == 'development':
         cors_origins.extend(['http://localhost:3000', 'http://localhost:5173'])
@@ -48,22 +46,25 @@ def create_app():
          origins=cors_origins, 
          methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
          allow_headers=['Content-Type'],
-         supports_credentials=False)
+         supports_credentials=False,
+         max_age=3600)
     
-    # MongoDB connection with explicit database name
-    app.db = None  # Initialize to None
+    # Request size limits (10MB max)
+    app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
+    
+    # MongoDB connection with timeouts
+    app.db = None
     try:
         app.logger.info('Connecting to MongoDB...')
-        app.logger.info(f'MongoDB URI prefix: {mongo_uri[:20]}...')
         client = MongoClient(
             mongo_uri, 
             serverSelectionTimeoutMS=10000,
             connectTimeoutMS=10000,
-            socketTimeoutMS=10000
+            socketTimeoutMS=10000,
+            maxPoolSize=10,
+            minPoolSize=1
         )
-        # Explicitly use EasyXpense database
         app.db = client['EasyXpense']
-        # Test connection
         app.db.command('ping')
         app.logger.info(f'✓ MongoDB connected successfully to database: {app.db.name}')
     except Exception as e:
@@ -71,10 +72,25 @@ def create_app():
         app.db = None
         raise RuntimeError(f'Failed to connect to MongoDB: {e}')
     
-    # Global request logging and validation
+    # Security headers middleware
+    @app.after_request
+    def add_security_headers(response):
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        response.headers['X-Frame-Options'] = 'DENY'
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        return response
+    
+    # Request validation and logging
     @app.before_request
     def log_and_validate():
-        app.logger.info(f'{request.method} {request.path} from {request.origin}')
+        # Skip logging for health checks
+        if request.path in ['/health', '/api/health']:
+            return
+        
+        app.logger.info(f'{request.method} {request.path} from {request.remote_addr}')
+        
+        # Validate Content-Type for POST/PUT
         if request.method in ['POST', 'PUT']:
             if request.content_type and 'application/json' not in request.content_type:
                 return jsonify({'success': False, 'error': 'Content-Type must be application/json'}), 400
@@ -86,12 +102,14 @@ def create_app():
         from app.routes.settlements import settlements_bp
         from app.routes.debts import debts_bp
         from app.routes.health import health_bp
+        from app.routes.groups import groups_bp
         
         app.register_blueprint(friends_bp, url_prefix='/api')
         app.register_blueprint(expenses_bp, url_prefix='/api')
         app.register_blueprint(settlements_bp, url_prefix='/api')
         app.register_blueprint(debts_bp, url_prefix='/api')
         app.register_blueprint(health_bp, url_prefix='/api')
+        app.register_blueprint(groups_bp, url_prefix='/api')
         
         app.logger.info('All blueprints registered successfully')
     except Exception as e:
@@ -143,7 +161,6 @@ def create_app():
     
     @app.errorhandler(404)
     def not_found(error):
-        # Don't log warnings for expected endpoints
         if request.path not in ['/', '/health']:
             app.logger.warning(f'Endpoint not found: {request.url}')
         return jsonify({'error': 'Endpoint not found'}), 404
@@ -152,6 +169,11 @@ def create_app():
     def method_not_allowed(error):
         app.logger.warning(f'Method not allowed: {request.method} {request.url}')
         return jsonify({'error': 'Method not allowed'}), 405
+    
+    @app.errorhandler(413)
+    def request_entity_too_large(error):
+        app.logger.warning(f'Request too large from {request.remote_addr}')
+        return jsonify({'error': 'Request body too large (max 10MB)'}), 413
     
     @app.errorhandler(500)
     def internal_error(error):

@@ -16,15 +16,20 @@ const Dashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
+      setError('');
+      
       const [expensesRes, debtsRes] = await Promise.all([
         expensesAPI.getAll(),
         debtsAPI.getAll()
       ]);
       
       setExpenses(expensesRes.data.slice(0, 5)); // Show only recent 5
-      setDebts(debtsRes.data);
+      
+      // Handle both optimized and legacy debt response formats
+      const debtsData = debtsRes.data.debts || debtsRes.data;
+      setDebts(Array.isArray(debtsData) ? debtsData : []);
     } catch (err) {
-      setError('Failed to load dashboard data');
+      setError(err.message || 'Failed to load dashboard data');
       console.error('Dashboard error:', err);
     } finally {
       setLoading(false);
@@ -48,12 +53,9 @@ const Dashboard = () => {
   }
 
   const totalOwed = debts
-    .filter(debt => debt.amount > 0)
-    .reduce((sum, debt) => sum + debt.amount, 0);
+    .reduce((sum, debt) => sum + (debt.amount || 0), 0);
 
-  const totalOwe = debts
-    .filter(debt => debt.amount < 0)
-    .reduce((sum, debt) => sum + Math.abs(debt.amount), 0);
+  const totalExpenses = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
 
   return (
     <div className="dashboard">
@@ -65,17 +67,17 @@ const Dashboard = () => {
       </div>
 
       <div className="dashboard-stats">
-        <div className="stat-card positive">
-          <h3>You are owed</h3>
+        <div className="stat-card">
+          <h3>Total Expenses</h3>
+          <p className="amount">{formatCurrency(totalExpenses)}</p>
+        </div>
+        <div className="stat-card">
+          <h3>Pending Settlements</h3>
+          <p className="amount">{debts.length}</p>
+        </div>
+        <div className="stat-card">
+          <h3>Net Balance</h3>
           <p className="amount">{formatCurrency(totalOwed)}</p>
-        </div>
-        <div className="stat-card negative">
-          <h3>You owe</h3>
-          <p className="amount">{formatCurrency(totalOwe)}</p>
-        </div>
-        <div className="stat-card neutral">
-          <h3>Total expenses</h3>
-          <p className="amount">{expenses.length}</p>
         </div>
       </div>
 
@@ -106,21 +108,20 @@ const Dashboard = () => {
 
         <div className="debt-summary">
           <div className="section-header">
-            <h2>Debt Summary</h2>
+            <h2>Pending Settlements</h2>
             <Link to="/debts" className="view-all">View All</Link>
           </div>
           {debts.length === 0 ? (
-            <p className="empty-state">No debts to show</p>
+            <p className="empty-state">All settled up!</p>
           ) : (
             <div className="debt-list">
-              {debts.slice(0, 5).map((debt) => (
-                <div key={debt.friendId} className="debt-item">
+              {debts.slice(0, 5).map((debt, index) => (
+                <div key={index} className="debt-item">
                   <div className="debt-info">
-                    <h4>{debt.friendName}</h4>
+                    <h4>{debt.debtor} → {debt.creditor}</h4>
                   </div>
-                  <div className={`debt-amount ${debt.amount > 0 ? 'positive' : 'negative'}`}>
-                    {debt.amount > 0 ? 'owes you ' : 'you owe '}
-                    {formatCurrency(Math.abs(debt.amount))}
+                  <div className="debt-amount">
+                    {formatCurrency(debt.amount)}
                   </div>
                 </div>
               ))}
