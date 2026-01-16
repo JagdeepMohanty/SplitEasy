@@ -4,7 +4,6 @@ import { formatCurrency } from '../utils/currency';
 
 const DebtTracker = () => {
   const [debts, setDebts] = useState([]);
-  const [balances, setBalances] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [settlingDebt, setSettlingDebt] = useState(null);
@@ -24,7 +23,6 @@ const DebtTracker = () => {
       // Handle optimized response format
       if (response.data.debts) {
         setDebts(response.data.debts);
-        setBalances(response.data.balances || {});
       } else {
         // Legacy format
         setDebts(Array.isArray(response.data) ? response.data : []);

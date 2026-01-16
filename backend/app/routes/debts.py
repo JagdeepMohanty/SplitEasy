@@ -57,9 +57,14 @@ def get_debts():
 
 def get_debts_legacy(query):
     """Legacy debt calculation (pairwise)"""
-    friends_collection = current_app.db.friends
-    expenses_collection = current_app.db.expenses
-    settlements_collection = current_app.db.settlements
+    try:
+        friends_collection = current_app.db.friends
+        expenses_collection = current_app.db.expenses
+        settlements_collection = current_app.db.settlements
+        
+        friends = list(friends_collection.find(query))
+        expenses = list(expenses_collection.find(query))
+        settlements = list(settlements_collection.find(query))
         
         # Calculate debts using integer paisa
         debt_matrix_paisa = {}
@@ -113,5 +118,5 @@ def get_debts_legacy(query):
         return jsonify(debts), 200
         
     except Exception as e:
-        current_app.logger.error(f'Get debts error: {e}')
+        current_app.logger.error(f'Get debts legacy error: {e}')
         return jsonify({'error': 'Failed to calculate debts'}), 500
