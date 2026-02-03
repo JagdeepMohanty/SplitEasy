@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { expensesAPI, friendsAPI } from '../services/api';
 import { parseAmount, calculateSplitAmount, formatCurrency } from '../utils/currency';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
 
 const AddExpense = () => {
   const navigate = useNavigate();
@@ -14,6 +17,7 @@ const AddExpense = () => {
   const [friends, setFriends] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState({});
 
   useEffect(() => {
     fetchFriends();
@@ -34,6 +38,14 @@ const AddExpense = () => {
       ...prev,
       [name]: value
     }));
+    
+    // Clear validation error when user starts typing
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
   };
 
   const handleParticipantChange = (friendName, isChecked) => {
@@ -43,31 +55,45 @@ const AddExpense = () => {
         ? [...prev.participants, friendName]
         : prev.participants.filter(name => name !== friendName)
     }));
+    
+    // Clear participants validation error
+    if (validationErrors.participants) {
+      setValidationErrors(prev => ({
+        ...prev,
+        participants: ''
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    
+    if (!formData.description.trim()) {
+      errors.description = 'Description is required';
+    }
+    
+    const amount = parseAmount(formData.amount);
+    if (!amount || amount <= 0) {
+      errors.amount = 'Please enter a valid amount greater than 0';
+    }
+    
+    if (!formData.payer) {
+      errors.payer = 'Please select who paid';
+    }
+    
+    if (formData.participants.length === 0) {
+      errors.participants = 'Please select at least one participant';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    // Validation
-    if (!formData.description.trim()) {
-      setError('Description is required');
-      return;
-    }
-
-    const amount = parseAmount(formData.amount);
-    if (!amount) {
-      setError('Please enter a valid amount');
-      return;
-    }
-
-    if (!formData.payer) {
-      setError('Please select who paid');
-      return;
-    }
-
-    if (formData.participants.length === 0) {
-      setError('Please select at least one participant');
+    if (!validateForm()) {
       return;
     }
 
@@ -75,7 +101,7 @@ const AddExpense = () => {
       setLoading(true);
       await expensesAPI.create({
         description: formData.description.trim(),
-        amount: amount,
+        amount: parseAmount(formData.amount),
         payer: formData.payer,
         participants: formData.participants
       });
@@ -99,103 +125,159 @@ const AddExpense = () => {
 
   return (
     <div className="add-expense">
-      <div className="page-header">
-        <h1>Add New Expense</h1>
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">Add New Expense</h1>
+        <p className="text-gray-600">Split a bill or expense with your friends</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="expense-form">
-        {error && <div className="error-message">{error}</div>}
+      <div className="max-w-2xl">
+        <Card>
+          <Card.Body>
+            {error && (
+              <div className="alert alert-danger mb-6">
+                <span>⚠️</span>
+                <div>
+                  <strong>Error</strong>
+                  <p>{error}</p>
+                </div>
+              </div>
+            )}
 
-        <div className="form-group">
-          <label htmlFor="description">Description</label>
-          <input
-            type="text"
-            id="description"
-            name="description"
-            value={formData.description}
-            onChange={handleInputChange}
-            placeholder="e.g., Dinner at restaurant"
-            required
-          />
-        </div>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Description */}
+              <Input
+                label="What was this expense for?"
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                placeholder="e.g., Dinner at Italian restaurant"
+                error={validationErrors.description}
+                floating
+              />
 
-        <div className="form-group">
-          <label htmlFor="amount">Amount (₹)</label>
-          <input
-            type="number"
-            id="amount"
-            name="amount"
-            value={formData.amount}
-            onChange={handleInputChange}
-            placeholder="0.00"
-            min="0.01"
-            step="0.01"
-            required
-          />
-          {splitAmount > 0 && (
-            <small className="split-info">
-              Split amount: {formatCurrency(splitAmount)} per person
-            </small>
-          )}
-        </div>
+              {/* Amount */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Input
+                  label="Amount (₹)"
+                  type="number"
+                  name="amount"
+                  value={formData.amount}
+                  onChange={handleInputChange}
+                  placeholder="0.00"
+                  min="0.01"
+                  step="0.01"
+                  error={validationErrors.amount}
+                  helper={splitAmount > 0 ? `Split: ${formatCurrency(splitAmount)} per person` : ''}
+                  floating
+                />
 
-        <div className="form-group">
-          <label htmlFor="payer">Who paid?</label>
-          <select
-            id="payer"
-            name="payer"
-            value={formData.payer}
-            onChange={handleInputChange}
-            required
-          >
-            <option value="">Select payer</option>
-            {friends.map(friend => (
-              <option key={friend._id} value={friend.name}>
-                {friend.name}
-              </option>
-            ))}
-          </select>
-        </div>
+                {/* Payer */}
+                <div className="form-group">
+                  <label className="form-label">Who paid?</label>
+                  <select
+                    className={`form-select ${validationErrors.payer ? 'form-error' : ''}`}
+                    name="payer"
+                    value={formData.payer}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">Select payer</option>
+                    {friends.map(friend => (
+                      <option key={friend._id} value={friend.name}>
+                        {friend.name}
+                      </option>
+                    ))}
+                  </select>
+                  {validationErrors.payer && (
+                    <div className="form-error-message">⚠️ {validationErrors.payer}</div>
+                  )}
+                </div>
+              </div>
 
-        <div className="form-group">
-          <label>Participants</label>
-          {friends.length === 0 ? (
-            <p className="no-friends">
-              No friends added yet. <a href="/friends">Add friends first</a>
-            </p>
-          ) : (
-            <div className="participants-list">
-              {friends.map(friend => (
-                <label key={friend._id} className="participant-item">
-                  <input
-                    type="checkbox"
-                    checked={formData.participants.includes(friend.name)}
-                    onChange={(e) => handleParticipantChange(friend.name, e.target.checked)}
-                  />
-                  <span>{friend.name}</span>
-                </label>
-              ))}
-            </div>
-          )}
-        </div>
+              {/* Participants */}
+              <div className="form-group">
+                <label className="form-label">Who participated in this expense?</label>
+                {friends.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-state-icon">👥</div>
+                    <div className="empty-state-title">No friends added yet</div>
+                    <div className="empty-state-description">
+                      You need to add friends before creating expenses.
+                    </div>
+                    <Button 
+                      as="a" 
+                      href="/friends" 
+                      variant="primary"
+                      className="mt-4"
+                    >
+                      Add Friends First
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 bg-gray-50 rounded-lg">
+                      {friends.map(friend => (
+                        <label 
+                          key={friend._id} 
+                          className="flex items-center gap-3 p-3 bg-white rounded-md cursor-pointer hover:bg-gray-50 transition-colors"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.participants.includes(friend.name)}
+                            onChange={(e) => handleParticipantChange(friend.name, e.target.checked)}
+                            className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                          />
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+                              <span className="text-primary-600 text-sm font-semibold">
+                                {friend.name.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                            <span className="font-medium text-gray-900">{friend.name}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                    {validationErrors.participants && (
+                      <div className="form-error-message mt-2">⚠️ {validationErrors.participants}</div>
+                    )}
+                    {formData.participants.length > 0 && (
+                      <div className="mt-3 p-3 bg-primary-50 rounded-md">
+                        <div className="text-sm text-primary-700">
+                          <strong>{formData.participants.length} people selected</strong>
+                          {splitAmount > 0 && (
+                            <span className="ml-2">• {formatCurrency(splitAmount)} each</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
 
-        <div className="form-actions">
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard')}
-            className="btn btn-secondary"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn btn-primary"
-          >
-            {loading ? 'Adding...' : 'Add Expense'}
-          </button>
-        </div>
-      </form>
+              {/* Actions */}
+              <div className="flex gap-4 pt-6">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => navigate('/dashboard')}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  loading={loading}
+                  disabled={friends.length === 0}
+                  className="flex-1"
+                >
+                  {loading ? 'Adding Expense...' : 'Add Expense'}
+                </Button>
+              </div>
+            </form>
+          </Card.Body>
+        </Card>
+      </div>
     </div>
   );
 };

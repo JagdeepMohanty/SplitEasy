@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { friendsAPI } from '../services/api';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
 
 const Friends = () => {
   const [friends, setFriends] = useState([]);
   const [newFriend, setNewFriend] = useState({ name: '', email: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState({});
 
   useEffect(() => {
     fetchFriends();
@@ -26,14 +30,40 @@ const Friends = () => {
       ...prev,
       [name]: value
     }));
+    
+    // Clear validation error when user starts typing
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    
+    if (!newFriend.name.trim()) {
+      errors.name = 'Name is required';
+    } else if (newFriend.name.trim().length < 2) {
+      errors.name = 'Name must be at least 2 characters';
+    }
+    
+    if (!newFriend.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newFriend.email.trim())) {
+      errors.email = 'Please enter a valid email address';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!newFriend.name.trim() || !newFriend.email.trim()) {
-      setError('Name and email are required');
+    if (!validateForm()) {
       return;
     }
 
@@ -60,69 +90,127 @@ const Friends = () => {
 
   return (
     <div className="friends">
-      <div className="page-header">
-        <h1>Friends</h1>
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">Friends</h1>
+        <p className="text-gray-600">Manage your friends to split expenses with</p>
       </div>
 
-      <div className="add-friend-section">
-        <h2>Add New Friend</h2>
-        <form onSubmit={handleSubmit} className="friend-form">
-          {error && <div className="error-message">{error}</div>}
+      {/* Add Friend Form */}
+      <Card className="mb-8">
+        <Card.Header>
+          <h2 className="text-xl font-semibold text-gray-900">Add New Friend</h2>
+        </Card.Header>
+        <Card.Body>
+          {error && (
+            <div className="alert alert-danger mb-6">
+              <span>⚠️</span>
+              <div>
+                <strong>Error</strong>
+                <p>{error}</p>
+              </div>
+            </div>
+          )}
           
-          <div className="form-row">
-            <div className="form-group">
-              <input
-                type="text"
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Input
+                label="Friend's Name"
                 name="name"
                 value={newFriend.name}
                 onChange={handleInputChange}
-                placeholder="Friend's name"
-                required
+                placeholder="e.g., John Doe"
+                error={validationErrors.name}
+                floating
               />
-            </div>
-            <div className="form-group">
-              <input
+              
+              <Input
+                label="Email Address"
                 type="email"
                 name="email"
                 value={newFriend.email}
                 onChange={handleInputChange}
-                placeholder="Friend's email"
-                required
+                placeholder="e.g., john@example.com"
+                error={validationErrors.email}
+                helper="We'll use this to identify your friend"
+                floating
               />
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary"
-            >
-              {loading ? 'Adding...' : 'Add Friend'}
-            </button>
-          </div>
-        </form>
-      </div>
+            
+            <div className="flex justify-end">
+              <Button
+                type="submit"
+                loading={loading}
+                icon="👥"
+              >
+                {loading ? 'Adding Friend...' : 'Add Friend'}
+              </Button>
+            </div>
+          </form>
+        </Card.Body>
+      </Card>
 
-      <div className="friends-list-section">
-        <h2>Your Friends ({friends.length})</h2>
-        {friends.length === 0 ? (
-          <div className="empty-state">
-            <p>No friends added yet. Add your first friend above!</p>
+      {/* Friends List */}
+      <Card>
+        <Card.Header>
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-gray-900">Your Friends</h2>
+            <div className="text-sm text-gray-500">
+              {friends.length} {friends.length === 1 ? 'friend' : 'friends'}
+            </div>
           </div>
-        ) : (
-          <div className="friends-grid">
-            {friends.map(friend => (
-              <div key={friend._id} className="friend-card">
-                <div className="friend-avatar">
-                  {friend.name.charAt(0).toUpperCase()}
-                </div>
-                <div className="friend-info">
-                  <h3>{friend.name}</h3>
-                  <p>{friend.email}</p>
-                </div>
+        </Card.Header>
+        <Card.Body>
+          {friends.length === 0 ? (
+            <div className="empty-state">
+              <div className="empty-state-icon">👥</div>
+              <div className="empty-state-title">No friends added yet</div>
+              <div className="empty-state-description">
+                Add your first friend above to start splitting expenses together!
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {friends.map(friend => (
+                <div key={friend._id} className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-primary-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-semibold text-lg">
+                        {friend.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-gray-900 truncate">{friend.name}</h3>
+                      <p className="text-sm text-gray-500 truncate">{friend.email}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card.Body>
+      </Card>
+
+      {/* Tips Card */}
+      {friends.length > 0 && (
+        <Card className="mt-8">
+          <Card.Body>
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <span className="text-primary-600 text-2xl">💡</span>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-2">Pro Tips</h3>
+                <ul className="text-gray-600 text-sm space-y-1">
+                  <li>• Friends you add here will be available when creating expenses</li>
+                  <li>• You can select multiple friends to participate in each expense</li>
+                  <li>• The app will automatically calculate how much each person owes</li>
+                </ul>
+              </div>
+            </div>
+          </Card.Body>
+        </Card>
+      )}
     </div>
   );
 };
